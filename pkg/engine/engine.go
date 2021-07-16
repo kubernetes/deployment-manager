@@ -44,6 +44,17 @@ type Engine struct {
 	config *rest.Config
 }
 
+// New creates a new instance of Engine with the supplied options
+func New(opts ...Option) (*Engine, error) {
+	e := &Engine{}
+	for _, opt := range opts {
+		if err := opt(e); err != nil {
+			return nil, err
+		}
+	}
+	return e, nil
+}
+
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
 //
 // Render can be called repeatedly on the same engine.
