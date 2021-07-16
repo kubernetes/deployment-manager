@@ -234,7 +234,12 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+			if hasResourcePolicyKeep(c, info) {
+				c.Log("Resource %q of kind %s not found in current manifest, skip update due to annotation [%s=%s]",
+					info.Name, kind, ResourcePolicyAnno, KeepPolicy)
+				return nil
+			}
+			return errors.Errorf("Cannot update the resource %q of kind %s, was not found in current manifest", info.Name, kind)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
@@ -261,11 +266,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Unable to get obj %q, err: %s", info.Name, err)
 			continue
 		}
-		annotations, err := metadataAccessor.Annotations(info.Object)
-		if err != nil {
-			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
-		}
-		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
+		if hasResourcePolicyKeep(c, info) {
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
@@ -276,6 +277,14 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		res.Deleted = append(res.Deleted, info)
 	}
 	return res, nil
+}
+
+func hasResourcePolicyKeep(c *Client, info *resource.Info) bool {
+	annotations, err := metadataAccessor.Annotations(info.Object)
+	if err != nil {
+		c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+	}
+	return annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy
 }
 
 // Delete deletes Kubernetes resources specified in the resources list. It will
