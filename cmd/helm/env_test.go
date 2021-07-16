@@ -22,9 +22,15 @@ import (
 
 func TestEnv(t *testing.T) {
 	tests := []cmdTestCase{{
-		name:   "completion for env",
-		cmd:    "__complete env ''",
+		name: "completion for env",
+		// We disable descriptions by using __completeNoDesc because they would contain
+		// OS-specific paths which will change depending on where the tests are run
+		cmd:    "__completeNoDesc env ''",
 		golden: "output/env-comp.txt",
+	}, {
+		name: "completion for env",
+		cmd: "__complete env HELM_K	",
+		golden: "output/env-desc-comp.txt",
 	}}
 	runTestCmd(t, tests)
 }

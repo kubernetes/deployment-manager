@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -38,8 +39,17 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 		Args:  require.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				keys := getSortedEnvVarKeys()
-				return keys, cobra.ShellCompDirectiveNoFileComp
+				var vars []string
+				for _, v := range settings.EnvVarsWithDesc() {
+					if strings.HasPrefix(v.Name, toComplete) {
+						val := strings.TrimSpace(v.Value)
+						if val == "" {
+							val = `""`
+						}
+						vars = append(vars, fmt.Sprintf("%s\t%s (%s)", v.Name, val, v.Desc))
+					}
+				}
+				return vars, cobra.ShellCompDirectiveNoFileComp
 			}
 
 			return nil, cobra.ShellCompDirectiveNoFileComp

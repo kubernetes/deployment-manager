@@ -302,7 +302,10 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 
 	// First check completions for repos
 	repos := compListRepos("", nil)
-	for _, repo := range repos {
+	for _, repoInfo := range repos {
+		// Split name from description
+		repoInfo := strings.Split(repoInfo, "\t")
+		repo := repoInfo[0]
 		repoWithSlash := fmt.Sprintf("%s/", repo)
 		if strings.HasPrefix(toComplete, repoWithSlash) {
 			// Must complete with charts within the specified repo
@@ -310,7 +313,11 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 			noSpace = false
 			break
 		} else if strings.HasPrefix(repo, toComplete) {
-			// Must complete the repo name
+			// Must complete the repo name with the slash, followed by the description
+			// TODO Actually add description once Cobra properly handles descriptions
+			// with ShellCompDirectiveNoSpace
+			// https://github.com/spf13/cobra/issues/1211
+			// https://github.com/spf13/cobra/issues/1248
 			completions = append(completions, repoWithSlash)
 			noSpace = true
 		}

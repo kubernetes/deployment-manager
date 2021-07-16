@@ -1,0 +1,8 @@
+HELM_KUBECONTEXT	"" (Kubernetes context to which this helm command applies)
+HELM_KUBETOKEN	"" (Path to the token file helm should use to contact the Kubernetes API server)
+HELM_KUBEASUSER	"" (Username to impersonate for the operation)
+HELM_KUBEASGROUPS	"" (Comma-separated list of groups to impersonate for the operation)
+HELM_KUBEAPISERVER	"" (<IP>:<port> helm should use to reach the Kubernetes API server)
+HELM_KUBECAFILE	"" (Path to the certificate authority file helm should use to contact the Kubernetes API server)
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

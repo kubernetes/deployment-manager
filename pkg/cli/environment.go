@@ -144,28 +144,46 @@ func envCSV(name string) (ls []string) {
 	return
 }
 
-func (s *EnvSettings) EnvVars() map[string]string {
-	envvars := map[string]string{
-		"HELM_BIN":               os.Args[0],
-		"HELM_CACHE_HOME":        helmpath.CachePath(""),
-		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
-		"HELM_DATA_HOME":         helmpath.DataPath(""),
-		"HELM_DEBUG":             fmt.Sprint(s.Debug),
-		"HELM_PLUGINS":           s.PluginsDirectory,
-		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
-		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
-		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
-		"HELM_NAMESPACE":         s.Namespace(),
-		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
+// EnvironmentVariable represents information about helm env vars
+type EnvironmentVariable struct {
+	Name  string
+	Value string
+	Desc  string
+}
+
+// EnvVarsWithDesc return an array of helm environment variables
+func (s *EnvSettings) EnvVarsWithDesc() []EnvironmentVariable {
+	return []EnvironmentVariable{
+		{Name: "HELM_BIN", Value: os.Args[0], Desc: "Path of the helm binary"},
+		{Name: "HELM_CACHE_HOME", Value: helmpath.CachePath(""), Desc: "Path of helm's cache files"},
+		{Name: "HELM_CONFIG_HOME", Value: helmpath.ConfigPath(""), Desc: "Path of helm's configuration files"},
+		{Name: "HELM_DATA_HOME", Value: helmpath.DataPath(""), Desc: "Path of helm's data files"},
+		{Name: "HELM_DEBUG", Value: fmt.Sprint(s.Debug), Desc: "Indicates if debug statements should be printed (true/false)"},
+		{Name: "HELM_PLUGINS", Value: s.PluginsDirectory, Desc: "Path of helm's plugin files"},
+		{Name: "HELM_REGISTRY_CONFIG", Value: s.RegistryConfig, Desc: "Path to the registry configuration file"},
+		{Name: "HELM_REPOSITORY_CACHE", Value: s.RepositoryCache, Desc: "Path to the file containing cached repository indexes"},
+		{Name: "HELM_REPOSITORY_CONFIG", Value: s.RepositoryConfig, Desc: "Path to the file containing repository names and URLs"},
+		{Name: "HELM_NAMESPACE", Value: s.Namespace(), Desc: "Kubernetes namespace to which this helm command applies"},
+		{Name: "HELM_MAX_HISTORY", Value: strconv.Itoa(s.MaxHistory), Desc: "Maximum number of revisions to configure for release history"},
 
 		// broken, these are populated from helm flags and not kubeconfig.
-		"HELM_KUBECONTEXT":   s.KubeContext,
-		"HELM_KUBETOKEN":     s.KubeToken,
-		"HELM_KUBEASUSER":    s.KubeAsUser,
-		"HELM_KUBEASGROUPS":  strings.Join(s.KubeAsGroups, ","),
-		"HELM_KUBEAPISERVER": s.KubeAPIServer,
-		"HELM_KUBECAFILE":    s.KubeCaFile,
+		{Name: "HELM_KUBECONTEXT", Value: s.KubeContext, Desc: "Kubernetes context to which this helm command applies"},
+		{Name: "HELM_KUBETOKEN", Value: s.KubeToken, Desc: "Path to the token file helm should use to contact the Kubernetes API server"},
+		{Name: "HELM_KUBEASUSER", Value: s.KubeAsUser, Desc: "Username to impersonate for the operation"},
+		{Name: "HELM_KUBEASGROUPS", Value: strings.Join(s.KubeAsGroups, ","), Desc: "Comma-separated list of groups to impersonate for the operation"},
+		{Name: "HELM_KUBEAPISERVER", Value: s.KubeAPIServer, Desc: "<IP>:<port> helm should use to reach the Kubernetes API server"},
+		{Name: "HELM_KUBECAFILE", Value: s.KubeCaFile, Desc: "Path to the certificate authority file helm should use to contact the Kubernetes API server"},
 	}
+}
+
+// EnvVars returns a map of env var with their current values
+func (s *EnvSettings) EnvVars() map[string]string {
+	rawvars := s.EnvVarsWithDesc()
+	envvars := make(map[string]string, len(rawvars))
+	for _, v := range rawvars {
+		envvars[v.Name] = v.Value
+	}
+
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig
 	}
