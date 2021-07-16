@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/gosuri/uitable"
@@ -53,6 +54,7 @@ type searchHubOptions struct {
 	searchEndpoint string
 	maxColWidth    uint
 	outputFormat   output.Format
+	noResultsFail  bool
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
@@ -70,6 +72,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "Hub instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
+	f.BoolVarP(&o.noResultsFail, "fail-if-no-results-found", "f", false, "exit with status code 1 if no results found")
 	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
@@ -88,7 +91,7 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
+	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth, o.noResultsFail))
 }
 
 type hubChartElement struct {
@@ -99,11 +102,12 @@ type hubChartElement struct {
 }
 
 type hubSearchWriter struct {
-	elements    []hubChartElement
-	columnWidth uint
+	elements      []hubChartElement
+	columnWidth   uint
+	noResultsFail bool
 }
 
-func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint) *hubSearchWriter {
+func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint, noResultsFail bool) *hubSearchWriter {
 	var elements []hubChartElement
 	for _, r := range results {
 		// Backwards compatibility for Monocular
@@ -116,7 +120,7 @@ func newHubSearchWriter(results []monocular.SearchResult, endpoint string, colum
 
 		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description})
 	}
-	return &hubSearchWriter{elements, columnWidth}
+	return &hubSearchWriter{elements, columnWidth, noResultsFail}
 }
 
 func (h *hubSearchWriter) WriteTable(out io.Writer) error {
@@ -124,6 +128,9 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
 			return fmt.Errorf("unable to write results: %s", err)
+		}
+		if h.noResultsFail {
+			os.Exit(1)
 		}
 		return nil
 	}
