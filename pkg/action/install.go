@@ -104,6 +104,8 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	// Labels customized release secret/configmap labels
+	Labels map[string]string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -290,6 +292,10 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return rel, nil
 	}
 
+	if err = i.cfg.Releases.SetLabels(i.Labels); err != nil {
+		return nil, err
+	}
+
 	if i.CreateNamespace {
 		ns := &v1.Namespace{
 			TypeMeta: metav1.TypeMeta{
@@ -316,7 +322,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		}
 	}
 
-	// If Replace is true, we need to supercede the last release.
+	// If Replace is true, we need to supersede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
 			return nil, err
