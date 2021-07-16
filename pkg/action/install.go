@@ -363,6 +363,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 			}
 		}
 	}
+	for _, r := range resources {
+		if err := r.Get(); err != nil {
+			return i.failRelease(rel, err)
+		}
+	}
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
