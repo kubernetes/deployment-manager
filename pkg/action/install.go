@@ -36,6 +36,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
@@ -104,6 +105,9 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+
+	// RegistryClient is a client for working with registries
+	RegistryClient *registry.Client
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -124,7 +128,8 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	return &Install{
-		cfg: cfg,
+		cfg:            cfg,
+		RegistryClient: cfg.RegistryClient,
 	}
 }
 
