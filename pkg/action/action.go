@@ -403,12 +403,12 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			namespace,
 		)
 		if err != nil {
-			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+			return errors.Wrap(err, "Unable to instantiate SQL driver")
 		}
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+		return errors.Errorf("Unknown driver in HELM_DRIVER: %s", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter
