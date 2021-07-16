@@ -547,7 +547,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 		}
 	}
 
-	return SaveDir(schart, dest)
+	return SaveDirCustom(schart, dest)
 }
 
 // Create creates a new chart in a directory.
@@ -570,20 +570,16 @@ func Create(name, dir string) (string, error) {
 		return "", err
 	}
 
-	path, err := filepath.Abs(dir)
+	cdir, err := filepath.Abs(dir)
 	if err != nil {
-		return path, err
+		return cdir, err
 	}
 
-	if fi, err := os.Stat(path); err != nil {
-		return path, err
+	parentPath := filepath.Dir(cdir)
+	if fi, err := os.Stat(parentPath); err != nil {
+		return parentPath, err
 	} else if !fi.IsDir() {
-		return path, errors.Errorf("no such directory %s", path)
-	}
-
-	cdir := filepath.Join(path, name)
-	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
-		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
+		return parentPath, errors.Errorf("no such directory %s", parentPath)
 	}
 
 	files := []struct {
