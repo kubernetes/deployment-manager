@@ -60,3 +60,16 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 `
 	is.Contains(res.Info, expected)
 }
+
+func TestUninstallRelease_allowNotFound(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.DryRun = false
+	unAction.KeepHistory = true
+	unAction.AllowNotFound = true
+	res, err := unAction.Run("chart-release-that-does-not-exist")
+	is.NoError(err)
+	is.Nil(res.Release)
+}

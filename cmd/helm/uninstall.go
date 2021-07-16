@@ -73,6 +73,6 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
-
+	f.BoolVar(&client.AllowNotFound, "allow-not-found", false, "if a release by this name doesn't already exist, it will not return an error")
 	return cmd
 }
