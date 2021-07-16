@@ -157,7 +157,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		}
 
 		fmt.Fprintln(out, "COMPUTED VALUES:")
-		err = output.EncodeYAML(out, cfg.AsMap())
+		err = output.EncodeYAML(out, cfg)
 		if err != nil {
 			return err
 		}

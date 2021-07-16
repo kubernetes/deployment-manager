@@ -17,11 +17,11 @@ limitations under the License.
 package chartutil
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
@@ -32,6 +32,16 @@ import (
 const GlobalKey = "global"
 
 // Values represents a collection of chart values.
+//
+// It should never be stored as an interface{} as conversion to
+// map[string]interface{} will then fail (in particular, as value in Values
+// or map[string]interface{} structures).
+// To avoid this to happen, all function should return map[string]interface{},
+// since implicit conversion to Values is allowed anyway.
+//
+// Values should only be used in one of these cases:
+// - when Values methods are used (return type must be map[string]interface{})
+// - to store the values for template rendering (as in chart.Values)
 type Values map[string]interface{}
 
 // YAML encodes the Values into a YAML string.
@@ -52,7 +62,7 @@ func (v Values) YAML() (string, error) {
 // foo".
 //
 // An ErrNoTable is returned if the table does not exist.
-func (v Values) Table(name string) (Values, error) {
+func (v Values) Table(name string) (map[string]interface{}, error) {
 	table := v
 	var err error
 
@@ -62,16 +72,6 @@ func (v Values) Table(name string) (Values, error) {
 		}
 	}
 	return table, err
-}
-
-// AsMap is a utility function for converting Values to a map[string]interface{}.
-//
-// It protects against nil map panics.
-func (v Values) AsMap() map[string]interface{} {
-	if v == nil || len(v) == 0 {
-		return map[string]interface{}{}
-	}
-	return v
 }
 
 // Encode writes serialized Values information to the given io.Writer.
@@ -84,7 +84,7 @@ func (v Values) Encode(w io.Writer) error {
 	return err
 }
 
-func tableLookup(v Values, simple string) (Values, error) {
+func tableLookup(v map[string]interface{}, simple string) (map[string]interface{}, error) {
 	v2, ok := v[simple]
 	if !ok {
 		return v, ErrNoTable{simple}
@@ -93,27 +93,20 @@ func tableLookup(v Values, simple string) (Values, error) {
 		return vv, nil
 	}
 
-	// This catches a case where a value is of type Values, but doesn't (for some
-	// reason) match the map[string]interface{}. This has been observed in the
-	// wild, and might be a result of a nil map of type Values.
-	if vv, ok := v2.(Values); ok {
-		return vv, nil
-	}
-
-	return Values{}, ErrNoTable{simple}
+	return map[string]interface{}{}, ErrNoTable{simple}
 }
 
 // ReadValues will parse YAML byte data into a Values.
-func ReadValues(data []byte) (vals Values, err error) {
+func ReadValues(data []byte) (vals map[string]interface{}, err error) {
 	err = yaml.Unmarshal(data, &vals)
 	if len(vals) == 0 {
-		vals = Values{}
+		vals = map[string]interface{}{}
 	}
 	return vals, err
 }
 
 // ReadValuesFile will parse a YAML file into a map of values.
-func ReadValuesFile(filename string) (Values, error) {
+func ReadValuesFile(filename string) (map[string]interface{}, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return map[string]interface{}{}, err
@@ -134,13 +127,14 @@ type ReleaseOptions struct {
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (map[string]interface{}, error) {
 	if caps == nil {
 		caps = DefaultCapabilities
 	}
 	top := map[string]interface{}{
 		"Chart":        chrt.Metadata,
 		"Capabilities": caps,
+		"Values":       nil,
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
 			"Namespace": options.Namespace,
@@ -151,17 +145,17 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		},
 	}
 
-	vals, err := CoalesceValues(chrt, chrtVals)
-	if err != nil {
-		return top, err
+	// if we have an empty map, make sure it is initialized
+	if chrtVals == nil {
+		top["Values"] = map[string]interface{}{}
+	} else {
+		vals, err := copystructure.Copy(chrtVals)
+		if err != nil {
+			return top, err
+		}
+		top["Values"] = vals.(map[string]interface{})
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
-		return top, fmt.Errorf(errFmt, err.Error())
-	}
-
-	top["Values"] = vals
 	return top, nil
 }
 
