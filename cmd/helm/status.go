@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v3/pkg/cli/sanitize"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -70,7 +71,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, settings.HideSecrets})
 		},
 	}
 
@@ -99,13 +100,26 @@ type statusPrinter struct {
 	release         *release.Release
 	debug           bool
 	showDescription bool
+	hideSecrets     bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
+	if s.hideSecrets {
+		err := sanitize.HideManifestSecrets(s.release)
+		if err != nil {
+			return err
+		}
+	}
 	return output.EncodeJSON(out, s.release)
 }
 
 func (s statusPrinter) WriteYAML(out io.Writer) error {
+	if s.hideSecrets {
+		err := sanitize.HideManifestSecrets(s.release)
+		if err != nil {
+			return err
+		}
+	}
 	return output.EncodeYAML(out, s.release)
 }
 
@@ -113,6 +127,13 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if s.release == nil {
 		return nil
 	}
+	if s.hideSecrets {
+		err := sanitize.HideManifestSecrets(s.release)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
 	if !s.release.Info.LastDeployed.IsZero() {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
