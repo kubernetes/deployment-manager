@@ -16,27 +16,32 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
-	"path/filepath"
+	"testing"
 )
 
-type base struct {
-	// Source is the reference to a plugin
-	Source string
-	// PluginsDirectory is the directory where plugins are installed
-	PluginsDirectory string
-}
-
-func newBase(source, pluginsDirectory string) base {
-	return base{
-		Source:           source,
-		PluginsDirectory: pluginsDirectory,
+func TestPath(t *testing.T) {
+	tests := []struct {
+		source         string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			source:         "",
+			helmPluginsDir: "/helm/data/plugins",
+			expectPath:     "",
+		}, {
+			source:         "https://github.com/jkroepke/helm-secrets",
+			helmPluginsDir: "/helm/data/plugins",
+			expectPath:     "/helm/data/plugins/helm-secrets",
+		},
 	}
-}
 
-// Path is where the plugin will be installed.
-func (b *base) Path() string {
-	if b.Source == "" {
-		return ""
+	for _, tt := range tests {
+
+		baseIns := newBase(tt.source, tt.helmPluginsDir)
+		baseInsPath := baseIns.Path()
+		if baseInsPath != tt.expectPath {
+			t.Errorf("expected name %s, got %s", tt.expectPath, baseInsPath)
+		}
 	}
-	return filepath.Join(b.PluginsDirectory, filepath.Base(b.Source))
 }
